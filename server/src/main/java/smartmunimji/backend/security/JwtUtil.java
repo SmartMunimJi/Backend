@@ -10,7 +10,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import smartmunimji.backend.entities.Admin;
 import smartmunimji.backend.entities.Customer;
 import jakarta.annotation.PostConstruct;
 import java.security.Key;
@@ -39,8 +41,15 @@ public class JwtUtil {
     }
 
     public String createToken(Authentication auth) {
-        Customer user = (Customer) auth.getPrincipal();
-        String subject = String.valueOf(user.getId());
+        UserDetails user = (UserDetails) auth.getPrincipal();
+        String subject;
+        if (user instanceof Customer) {
+            subject = String.valueOf(((Customer) user).getId());
+        } else if (user instanceof Admin) {
+            subject = String.valueOf(((Admin) user).getId());
+        } else {
+            throw new IllegalArgumentException("Unsupported user type");
+        }
         String roles = auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));

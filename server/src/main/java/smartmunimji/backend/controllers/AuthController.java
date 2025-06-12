@@ -8,14 +8,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import smartmunimji.backend.entities.Admin;
 import smartmunimji.backend.entities.Customer;
+import smartmunimji.backend.daos.AdminDao;
 import smartmunimji.backend.daos.CustomerDao;
 import smartmunimji.backend.security.JwtUtil;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/sm")
-public class CustomerController {
+public class AuthController {
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -25,6 +27,9 @@ public class CustomerController {
 
     @Autowired
     private CustomerDao customerDao;
+
+    @Autowired
+    private AdminDao adminDao;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -60,6 +65,34 @@ public class CustomerController {
         return ResponseEntity.ok(token);
     }
 
+    @PostMapping("/admin/register")
+    public ResponseEntity<String> registerAdmin(@RequestBody AdminRegisterRequest adminRequest) {
+        Optional<Admin> existingAdmin = adminDao.findByEmail(adminRequest.getEmail());
+        if (existingAdmin.isPresent()) {
+            return ResponseEntity.badRequest().body("Admin email already exists");
+        }
+
+        Admin admin = new Admin();
+        admin.setEmail(adminRequest.getEmail());
+        admin.setPassword(passwordEncoder.encode(adminRequest.getPassword()));
+
+        adminDao.save(admin);
+        return ResponseEntity.ok("Admin registered successfully");
+    }
+
+    @PostMapping("/admin/authenticate")
+    public ResponseEntity<String> authenticateAdmin(@RequestBody AdminAuthRequest adminRequest) {
+        Authentication authentication = authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(
+                adminRequest.getEmail(),
+                adminRequest.getPassword()
+            )
+        );
+
+        String token = jwtUtil.createToken(authentication);
+        return ResponseEntity.ok(token);
+    }
+
     @GetMapping("/cust/profile")
     public ResponseEntity<String> getProfile() {
         return ResponseEntity.ok("Customer profile accessed successfully");
@@ -69,7 +102,7 @@ public class CustomerController {
     public ResponseEntity<String> getAdminDashboard() {
         return ResponseEntity.ok("Admin dashboard accessed successfully");
     }
-    
+
     @PutMapping("/update-profile")
     public ResponseEntity<String> updateProfile(@RequestBody UpdateProfileRequest updateRequest) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -77,7 +110,7 @@ public class CustomerController {
             return ResponseEntity.status(401).body("Unauthorized");
         }
 
-        String customerId = authentication.getName(); // JWT subject is customer ID
+        String customerId = authentication.getName();
         Optional<Customer> customerOptional = customerDao.findById(Integer.parseInt(customerId));
         if (customerOptional.isEmpty()) {
             return ResponseEntity.badRequest().body("User not found");
@@ -168,6 +201,7 @@ class RegisterRequest {
         this.address = address;
     }
 }
+
 class UpdateProfileRequest {
     private String name;
     private String phone;
@@ -195,5 +229,47 @@ class UpdateProfileRequest {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+}
+
+class AdminRegisterRequest {
+    private String email;
+    private String password;
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+
+class AdminAuthRequest {
+    private String email;
+    private String password;
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }
