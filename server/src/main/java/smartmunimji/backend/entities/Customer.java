@@ -1,8 +1,6 @@
 package smartmunimji.backend.entities;
 
 import java.util.Collection;
-import java.util.List;
-
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,43 +18,112 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @Setter
 @Entity
-@Table(name = "pizza_customers")
+@Table(name = "customers")
 public class Customer implements UserDetails {
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Id
-	@Column(name="ID")
-	private int id;
-	@Column(name="Name")
-	private String name;
-	@Column(name="Email")
-	private String email;
-	@Column(name="Password")
-	private String password;
-	@Column(name="Mobile")
-	private String mobile;
-	@Column(name="Address")
-	private String address;
-	@Column(name="Role")
-	private String role;
-	
-	@Override
-	public Collection<? extends GrantedAuthority> getAuthorities() {
-		List<GrantedAuthority> authorities = AuthorityUtils.createAuthorityList(this.role);
-		return authorities;
-	}
-	@Override
-	public String getUsername() {
-		return this.email;
-	}
-	@Override
-	public String getPassword() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(name = "name", nullable = false, length = 100)
+    private String name;
+
+    @Column(name = "email", nullable = false, length = 100, unique = true)
+    private String email;
+
+    @JsonIgnore
+    @Column(name = "password", nullable = false, length = 255)
+    private String password;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    @Column(name = "address", columnDefinition = "TEXT")
+    private String address;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "extra1", length = 255)
+    private String extra1;
+
+    @Column(name = "extra2", length = 255)
+    private String extra2;
+
+    @Column(name = "extra3", length = 255)
+    private String extra3;
+
+    @Column(name = "extra4", length = 255)
+    private String extra4;
+
+    @Column(name = "extra5", length = 255)
+    private String extra5;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return AuthorityUtils.createAuthorityList("ROLE_CUSTOMER");
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    @JsonIgnore
+    public String getPassword() {
+        return password;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isEnabled() {
+        return true;
+    }
+
+    // Explicit getter for id to ensure compatibility
+    public Integer getId() {
+        return id;
+    }
 }
