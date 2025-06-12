@@ -5,6 +5,8 @@ import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -14,6 +16,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import smartmunimji.backend.entities.Admin;
 import smartmunimji.backend.entities.Customer;
+import smartmunimji.backend.entities.Seller;
 import jakarta.annotation.PostConstruct;
 import java.security.Key;
 import java.util.Base64;
@@ -23,6 +26,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class JwtUtil {
+    private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
+
     @Value("${jwt.token.expiration.millis:86400000}")
     private long jwtExpiration;
 
@@ -45,14 +50,21 @@ public class JwtUtil {
         String subject;
         if (user instanceof Customer) {
             subject = String.valueOf(((Customer) user).getId());
+            logger.info("Creating JWT for Customer ID: {}", subject);
         } else if (user instanceof Admin) {
             subject = String.valueOf(((Admin) user).getId());
+            logger.info("Creating JWT for Admin ID: {}", subject);
+        } else if (user instanceof Seller) {
+            subject = String.valueOf(((Seller) user).getId());
+            logger.info("Creating JWT for Seller ID: {}", subject);
         } else {
+            logger.error("Unsupported user type: {}", user.getClass().getName());
             throw new IllegalArgumentException("Unsupported user type");
         }
         String roles = auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
+        logger.debug("JWT roles: {}", roles);
 
         return Jwts.builder()
                 .setSubject(subject)
@@ -70,8 +82,10 @@ public class JwtUtil {
             String custId = claims.getSubject();
             String roles = (String) claims.get("role");
             List<GrantedAuthority> authorities = AuthorityUtils.commaSeparatedStringToAuthorityList(roles);
+            logger.info("Validated JWT for ID: {}, roles: {}", custId, roles);
             return new UsernamePasswordAuthenticationToken(custId, null, authorities);
         } catch (Exception e) {
+            logger.error("JWT validation failed: {}", e.getMessage());
             return null;
         }
     }

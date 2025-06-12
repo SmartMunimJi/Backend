@@ -28,6 +28,9 @@ public class SecurityConfig {
     private AdminUserDetailsService adminUserDetailsService;
 
     @Autowired
+    private SellerUserDetailsService sellerUserDetailsService;
+
+    @Autowired
     private JwtFilter jwtFilter;
 
     @Bean
@@ -52,10 +55,19 @@ public class SecurityConfig {
     }
 
     @Bean
+    public AuthenticationProvider sellerAuthenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(sellerUserDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
+    }
+
+    @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) {
         return new ProviderManager(Arrays.asList(
             customerAuthenticationProvider(),
-            adminAuthenticationProvider()
+            adminAuthenticationProvider(),
+            sellerAuthenticationProvider()
         ));
     }
 
@@ -64,9 +76,11 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/sm/register", "/sm/authenticate", "/sm/admin/register", "/sm/admin/authenticate").permitAll()
+                .requestMatchers("/sm/register", "/sm/authenticate", "/sm/admin/register", 
+                    "/sm/admin/authenticate", "/sm/seller/register", "/sm/seller/authenticate").permitAll()
                 .requestMatchers("/sm/cust/**", "/sm/update-profile").hasRole("CUSTOMER")
                 .requestMatchers("/sm/admin/**").hasRole("ADMIN")
+                .requestMatchers("/sm/seller/**").hasRole("SELLER")
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> 
@@ -74,6 +88,7 @@ public class SecurityConfig {
             )
             .authenticationProvider(customerAuthenticationProvider())
             .authenticationProvider(adminAuthenticationProvider())
+            .authenticationProvider(sellerAuthenticationProvider())
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
