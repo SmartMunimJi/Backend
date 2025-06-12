@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import smartmunimji.backend.entities.Customer;
@@ -68,6 +69,35 @@ public class CustomerController {
     public ResponseEntity<String> getAdminDashboard() {
         return ResponseEntity.ok("Admin dashboard accessed successfully");
     }
+    
+    @PutMapping("/update-profile")
+    public ResponseEntity<String> updateProfile(@RequestBody UpdateProfileRequest updateRequest) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+
+        String customerId = authentication.getName(); // JWT subject is customer ID
+        Optional<Customer> customerOptional = customerDao.findById(Integer.parseInt(customerId));
+        if (customerOptional.isEmpty()) {
+            return ResponseEntity.badRequest().body("User not found");
+        }
+
+        Customer customer = customerOptional.get();
+
+        if (updateRequest.getName() != null && !updateRequest.getName().isBlank()) {
+            customer.setName(updateRequest.getName());
+        }
+        if (updateRequest.getPhone() != null) {
+            customer.setPhone(updateRequest.getPhone());
+        }
+        if (updateRequest.getAddress() != null) {
+            customer.setAddress(updateRequest.getAddress());
+        }
+
+        customerDao.save(customer);
+        return ResponseEntity.ok("Profile updated successfully");
+    }
 }
 
 class AuthRequest {
@@ -120,6 +150,35 @@ class RegisterRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+}
+class UpdateProfileRequest {
+    private String name;
+    private String phone;
+    private String address;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getPhone() {

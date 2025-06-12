@@ -50,7 +50,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/sm/register", "/sm/authenticate").permitAll()
-                .requestMatchers("/sm/cust/**").hasRole("CUSTOMER")
+                .requestMatchers("/sm/cust/**", "/sm/update-profile").hasRole("CUSTOMER")
                 .requestMatchers("/sm/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
