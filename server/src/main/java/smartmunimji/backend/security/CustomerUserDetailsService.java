@@ -7,7 +7,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import smartmunimji.backend.entities.Customer;
 import smartmunimji.backend.daos.CustomerDao;
-
 import java.util.Optional;
 
 @Service

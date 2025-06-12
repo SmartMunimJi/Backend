@@ -10,11 +10,10 @@ import org.springframework.web.bind.annotation.*;
 import smartmunimji.backend.entities.Customer;
 import smartmunimji.backend.daos.CustomerDao;
 import smartmunimji.backend.security.JwtUtil;
-
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/sm")
 public class CustomerController {
 
     @Autowired
@@ -28,18 +27,14 @@ public class CustomerController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
-    
-    
 
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody RegisterRequest registerRequest) {
-        // Check if email already exists
         Optional<Customer> existingCustomer = customerDao.findByEmail(registerRequest.getEmail());
         if (existingCustomer.isPresent()) {
             return ResponseEntity.badRequest().body("Email already exists");
         }
 
-        // Create new customer
         Customer customer = new Customer();
         customer.setName(registerRequest.getName());
         customer.setEmail(registerRequest.getEmail());
@@ -47,11 +42,9 @@ public class CustomerController {
         customer.setPhone(registerRequest.getPhone());
         customer.setAddress(registerRequest.getAddress());
 
-        // Save customer to database
         customerDao.save(customer);
         return ResponseEntity.ok("User registered successfully");
     }
-    
 
     @PostMapping("/authenticate")
     public ResponseEntity<String> authenticate(@RequestBody AuthRequest authRequest) {

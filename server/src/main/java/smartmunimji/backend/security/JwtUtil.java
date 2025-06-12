@@ -12,9 +12,9 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.stereotype.Component;
 import smartmunimji.backend.entities.Customer;
-
 import jakarta.annotation.PostConstruct;
 import java.security.Key;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,19 +24,23 @@ public class JwtUtil {
     @Value("${jwt.token.expiration.millis:86400000}")
     private long jwtExpiration;
 
-    @Value("${jwt.token.secret:defaultSecretKeyWithSufficientLengthForHS256Algorithm}")
+    @Value("${jwt.token.secret}")
     private String jwtSecret;
 
     private Key jwtKey;
 
     @PostConstruct
     public void init() {
-        jwtKey = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        byte[] keyBytes = Base64.getDecoder().decode(jwtSecret);
+        if (keyBytes.length < 32) {
+            throw new IllegalArgumentException("JWT secret key must be at least 32 bytes (256 bits) after Base64 decoding");
+        }
+        jwtKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String createToken(Authentication auth) {
         Customer user = (Customer) auth.getPrincipal();
-        String subject = String.valueOf(user.getId()); // Calls getId() which is now available
+        String subject = String.valueOf(user.getId());
         String roles = auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
@@ -59,7 +63,7 @@ public class JwtUtil {
             List<GrantedAuthority> authorities = AuthorityUtils.commaSeparatedStringToAuthorityList(roles);
             return new UsernamePasswordAuthenticationToken(custId, null, authorities);
         } catch (Exception e) {
-            return null; // Invalid token
+            return null;
         }
     }
 }
