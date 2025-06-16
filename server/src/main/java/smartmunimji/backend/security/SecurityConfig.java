@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.authentication.ProviderManager;
+
 import java.util.Arrays;
 
 @Configuration
@@ -76,9 +77,10 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/sm/register", "/sm/authenticate", "/sm/admin/register", 
-                    "/sm/admin/authenticate", "/sm/seller/register", "/sm/seller/authenticate").permitAll()
-                .requestMatchers("/sm/cust/**", "/sm/update-profile").hasRole("CUSTOMER")
+                .requestMatchers("/sm/register", "/sm/authenticate", 
+                    "/sm/admin/register", "/sm/admin/authenticate", 
+                    "/sm/seller/register", "/sm/seller/authenticate").permitAll()
+                .requestMatchers("/sm/cust/**", "/sm/update-profile", "/sm/customer/register-product").hasRole("CUSTOMER")
                 .requestMatchers("/sm/admin/**").hasRole("ADMIN")
                 .requestMatchers("/sm/seller/**").hasRole("SELLER")
                 .anyRequest().authenticated()

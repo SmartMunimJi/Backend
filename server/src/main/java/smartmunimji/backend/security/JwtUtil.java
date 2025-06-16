@@ -1,92 +1,64 @@
 package smartmunimji.backend.security;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
-import smartmunimji.backend.entities.Admin;
-import smartmunimji.backend.entities.Customer;
-import smartmunimji.backend.entities.Seller;
-import jakarta.annotation.PostConstruct;
-import java.security.Key;
-import java.util.Base64;
+
 import java.util.Date;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
 
 @Component
 public class JwtUtil {
-    private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
 
-    @Value("${jwt.token.expiration.millis:86400000}")
-    private long jwtExpiration;
+    @Value("${jwt.secret}")
+    private String secret;
 
-    @Value("${jwt.token.secret}")
-    private String jwtSecret;
+    @Value("${jwt.expiration}")
+    private Long expiration;
 
-    private Key jwtKey;
-
-    @PostConstruct
-    public void init() {
-        byte[] keyBytes = Base64.getDecoder().decode(jwtSecret);
-        if (keyBytes.length < 32) {
-            throw new IllegalArgumentException("JWT secret key must be at least 32 bytes (256 bits) after Base64 decoding");
-        }
-        jwtKey = Keys.hmacShaKeyFor(keyBytes);
-    }
-
-    public String createToken(Authentication auth) {
-        UserDetails user = (UserDetails) auth.getPrincipal();
-        String subject;
-        if (user instanceof Customer) {
-            subject = String.valueOf(((Customer) user).getId());
-            logger.info("Creating JWT for Customer ID: {}", subject);
-        } else if (user instanceof Admin) {
-            subject = String.valueOf(((Admin) user).getId());
-            logger.info("Creating JWT for Admin ID: {}", subject);
-        } else if (user instanceof Seller) {
-            subject = String.valueOf(((Seller) user).getId());
-            logger.info("Creating JWT for Seller ID: {}", subject);
-        } else {
-            logger.error("Unsupported user type: {}", user.getClass().getName());
-            throw new IllegalArgumentException("Unsupported user type");
-        }
-        String roles = auth.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.joining(","));
-        logger.debug("JWT roles: {}", roles);
+    public String createToken(Authentication authentication) {
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", authentication.getAuthorities());
 
         return Jwts.builder()
-                .setSubject(subject)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
-                .claim("role", roles)
-                .signWith(jwtKey, SignatureAlgorithm.HS256)
-                .compact();
+            .setClaims(claims)
+            .setSubject(userDetails.getUsername())
+            .setIssuedAt(new Date(System.currentTimeMillis()))
+            .setExpiration(new Date(System.currentTimeMillis() + expiration * 1000))
+            .signWith(SignatureAlgorithm.HS512, secret)
+            .compact();
     }
 
-    public Authentication validateToken(String token) {
-        try {
-            JwtParser parser = Jwts.parserBuilder().setSigningKey(jwtKey).build();
-            Claims claims = parser.parseClaimsJws(token).getBody();
-            String custId = claims.getSubject();
-            String roles = (String) claims.get("role");
-            List<GrantedAuthority> authorities = AuthorityUtils.commaSeparatedStringToAuthorityList(roles);
-            logger.info("Validated JWT for ID: {}, roles: {}", custId, roles);
-            return new UsernamePasswordAuthenticationToken(custId, null, authorities);
-        } catch (Exception e) {
-            logger.error("JWT validation failed: {}", e.getMessage());
-            return null;
-        }
+    public Boolean validateToken(String token, UserDetails userDetails) {
+        final String username = extractUsername(token);
+        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    private <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody();
+    }
+
+    private Boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
     }
 }
