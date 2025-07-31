@@ -1,0 +1,12 @@
+{
+  "validate-purchase": [
+    {
+      "orderId": "TM-98765",
+      "customerPhoneNumber": "+919876543210",
+      "productName": "Samsung Galaxy M32",
+      "productPrice": 14999.99,
+      "dateOfPurchase": "2023-11-15",
+      "warrantyPeriodMonths": 24
+    }
+  ]
+}

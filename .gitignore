@@ -2,3 +2,4 @@
 Servers
 server/.mvn
 server/.settings
+node_modules

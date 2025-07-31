@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.authentication.ProviderManager;
+import smartmunimji.backend.services.*;
 
 import java.util.Arrays;
 
@@ -22,17 +23,21 @@ import java.util.Arrays;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private CustomerUserDetailsService customerUserDetailsService;
+    private final CustomerUserDetailsService customerUserDetailsService;
+    private final AdminUserDetailsService adminUserDetailsService;
+    private final SellerUserDetailsService sellerUserDetailsService;
+    private final JwtFilter jwtFilter;
 
     @Autowired
-    private AdminUserDetailsService adminUserDetailsService;
-
-    @Autowired
-    private SellerUserDetailsService sellerUserDetailsService;
-
-    @Autowired
-    private JwtFilter jwtFilter;
+    public SecurityConfig(CustomerUserDetailsService customerUserDetailsService,
+                          AdminUserDetailsService adminUserDetailsService,
+                          SellerUserDetailsService sellerUserDetailsService,
+                          JwtFilter jwtFilter) {
+        this.customerUserDetailsService = customerUserDetailsService;
+        this.adminUserDetailsService = adminUserDetailsService;
+        this.sellerUserDetailsService = sellerUserDetailsService;
+        this.jwtFilter = jwtFilter;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -67,34 +72,28 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) {
-        return new ProviderManager(Arrays.asList(
-            customerAuthenticationProvider(),
-            adminAuthenticationProvider(),
-            sellerAuthenticationProvider()
-        ));
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/smart-munimji/auth/register/customer", "/smart-munimji/auth/login").permitAll()
-                .requestMatchers("/smart-munimji/users/**").hasRole("CUSTOMER")
-                .requestMatchers("/smart-munimji/products/**").hasRole("CUSTOMER")
-                .requestMatchers("/smart-munimji/claims/**").hasRole("CUSTOMER")
-                .requestMatchers("/smart-munimji/admin/**").hasRole("ADMIN")
-                .requestMatchers("/smart-munimji/seller/**").hasRole("SELLER")
-                .anyRequest().authenticated()
-            )
-            .sessionManagement(session -> 
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authenticationProvider(customerAuthenticationProvider())
-            .authenticationProvider(adminAuthenticationProvider())
-            .authenticationProvider(sellerAuthenticationProvider())
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/smart-munimji/auth/register/customer", "/smart-munimji/auth/login").permitAll()
+                        .requestMatchers("/smart-munimji/users/**").hasRole("CUSTOMER")
+                        .requestMatchers("/smart-munimji/products/**").hasRole("CUSTOMER")
+                        .requestMatchers("/smart-munimji/claims/**").hasRole("CUSTOMER")
+                        .requestMatchers("/smart-munimji/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/smart-munimji/seller/**").hasRole("SELLER")
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .authenticationManager(authenticationManager)
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
